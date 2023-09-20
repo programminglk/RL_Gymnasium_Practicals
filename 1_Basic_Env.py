@@ -8,7 +8,7 @@ print(gym.envs.registry.keys())
 
 for _ in range(200):
 
-    action = env.action_space.sample()
+    action = env.action_space.sample() # <--this is random policy. (Add your policy function here)
 
     print(f"action selected at {_} is: {action}")  
 
