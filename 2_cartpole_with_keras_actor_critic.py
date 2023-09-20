@@ -4,6 +4,8 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
+import time
+
 # Configuration parameters for the whole setup
 
 gamma = 0.99  # Discount factor for past rewards
@@ -17,6 +19,7 @@ num_inputs = 4
 num_actions = 2
 num_hidden = 128
 
+# Using Keras __ API to build the model
 inputs = layers.Input(shape=(num_inputs,))
 common = layers.Dense(num_hidden, activation="relu")(inputs)
 action = layers.Dense(num_actions, activation="softmax")(common)
@@ -35,7 +38,8 @@ rewards_history = []
 running_reward = 0
 episode_count = 0
 
-while True:  # Run until solved
+# while True:  # Run until solved
+for _ in range(10):
     state, info = env.reset()
     episode_reward = 0
     with tf.GradientTape() as tape:
@@ -46,21 +50,29 @@ while True:  # Run until solved
             state = tf.convert_to_tensor(state)
             state = tf.expand_dims(state, 0)
 
-            # Predict action probabilities and estimated future rewards
-            # from environment state
-            action_probs, critic_value = model(state)
+            # Run the observed state through the model one timestep forward.
+            # Model outputs/predicts action probabilities and estimated future rewards
+            action_probs, critic_value = model(state) 
+            print(f"action_probs: {action_probs}, critic_value: {critic_value}")
+            # action_probs: [[0.87626624 0.1237338 ]], critic_value: [[0.49339035]] 
+
             critic_value_history.append(critic_value[0, 0])
 
             # Sample action from action probability distribution
-            action = np.random.choice(num_actions, p=np.squeeze(action_probs))
+            action = np.random.choice(num_actions, p=np.squeeze(action_probs))  
+            # np.squeeze() removes any emmpty Dimensions and try to squeeze into a posible lower Dimension. So here,
+            # np.squeeze([[0.87626624 0.1237338 ]]) is converted to [0.87626624 0.1237338 ]
+
             action_probs_history.append(tf.math.log(action_probs[0, action]))
 
-            # Apply the sampled action in our environment
+
+            # Apply the sampled action in the environment
             state, reward, terminated, truncated, info = env.step(action)
             rewards_history.append(reward)
             episode_reward += reward
 
             if terminated:
+                time.sleep(0.1)
                 break
 
         # Update running reward to check condition for solving
@@ -72,14 +84,16 @@ while True:  # Run until solved
         # - These are the labels for our critic
         returns = []
         discounted_sum = 0
-        for r in rewards_history[::-1]:
+        for r in rewards_history[::-1]: # looping backwards
             discounted_sum = r + gamma * discounted_sum
-            returns.insert(0, discounted_sum)
+            returns.insert(0, discounted_sum) # always insert at the beginning of the list, others gets pushed to the right
 
         # Normalize
         returns = np.array(returns)
+        print(f"returns: {returns}")
         returns = (returns - np.mean(returns)) / (np.std(returns) + eps)
         returns = returns.tolist()
+        print(f"returns: {returns} \n")
 
         # Calculating loss values to update our network
         history = zip(action_probs_history, critic_value_history, returns)
@@ -100,10 +114,10 @@ while True:  # Run until solved
                 huber_loss(tf.expand_dims(value, 0), tf.expand_dims(ret, 0))
             )
 
-        # Backpropagation
+        # Backpropagation (Actual Learning Happens here)
         loss_value = sum(actor_losses) + sum(critic_losses)
-        grads = tape.gradient(loss_value, model.trainable_variables)
-        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+        grads = tape.gradient(loss_value, model.trainable_variables) # calculateing gradients (how much to change the weights) based on the loss value
+        optimizer.apply_gradients(zip(grads, model.trainable_variables)) # applying the gradients to the model
 
         # Clear the loss and reward history
         action_probs_history.clear()
