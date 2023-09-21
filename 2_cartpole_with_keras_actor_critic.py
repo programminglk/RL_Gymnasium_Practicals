@@ -11,7 +11,7 @@ import time
 gamma = 0.99  # Discount factor for past rewards
 max_steps_per_episode = 10000
 env = gym.make("CartPole-v1", render_mode="human") # CartPole-v1, MountainCar-v0, CliffWalking-v0, LunarLander-v2 # Create the environment
-eps = np.finfo(np.float32).eps.item()  # Smallest number such that 1.0 + eps != 1.0
+eps = np.finfo(np.float32).eps.item()  # Epsilone - Smallest number such that 1.0 + eps != 1.0
 
 
 
